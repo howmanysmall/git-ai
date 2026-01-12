@@ -13,6 +13,15 @@ impl ApiClient {
     /// * `Ok(CasUploadResponse)` - Success response
     /// * `Err(GitAiError)` - Error response
     pub fn upload_cas(&self, request: CasUploadRequest) -> Result<CasUploadResponse, GitAiError> {
+        // FORK POLICY: All outbound prompt uploads are disabled in this fork.
+        // This prevents any CAS objects from being uploaded to the server.
+        // See src/config.rs::outbound_network_reporting_disabled() for the policy gate.
+        if crate::config::outbound_network_reporting_disabled() {
+            return Err(GitAiError::Generic(
+                "CAS uploads disabled by fork policy".to_string(),
+            ));
+        }
+
         let response = self.context().post_json("/worker/cas/upload", &request)?;
         let status_code = response.status_code;
 

@@ -185,6 +185,13 @@ pub fn log_message(message: &str, level: &str, context: Option<serde_json::Value
 
 /// Spawn a background process to flush logs to Sentry
 pub fn spawn_background_flush() {
+    // FORK POLICY: All outbound telemetry is disabled in this fork.
+    // Don't spawn background flush process when telemetry is disabled.
+    // See src/config.rs::outbound_network_reporting_disabled() for the policy gate.
+    if crate::config::outbound_network_reporting_disabled() {
+        return;
+    }
+
     // Always spawn flush process - it will handle OSS/Enterprise DSN logic
     // and cleanup when telemetry_oss is "off"
     use std::process::Command;
