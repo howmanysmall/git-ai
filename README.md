@@ -15,7 +15,7 @@
 **This fork disables all outbound telemetry and prompt uploads by default.**
 
 - ❌ No Sentry telemetry
-- ❌ No PostHog analytics  
+- ❌ No PostHog analytics
 - ❌ No CAS (Content-Addressable Storage) prompt uploads
 - ✅ All tracking remains local only
 

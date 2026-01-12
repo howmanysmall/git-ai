@@ -9,6 +9,7 @@ use crate::config::Config;
 use crate::error::GitAiError;
 use crate::git::refs::notes_add;
 use crate::git::repository::Repository;
+use crate::policy;
 use crate::utils::debug_log;
 use std::collections::{HashMap, HashSet};
 use std::io::IsTerminal;
@@ -123,7 +124,7 @@ pub fn post_commit(
 
             if should_enqueue_cas {
                 // Fork policy: prompt uploads are disabled
-                if crate::policy::outbound_network_reporting_disabled() {
+                if policy::outbound_network_reporting_disabled() {
                     // Never upload prompts - strip messages
                     strip_prompt_messages(&mut authorship_log.metadata.prompts);
                 } else {
@@ -473,7 +474,7 @@ mod tests {
         // Verify that enqueue_prompt_messages_to_cas respects the policy gate
         // When policy is enabled, it should never upload prompts
         assert!(
-            crate::policy::outbound_network_reporting_disabled(),
+            policy::outbound_network_reporting_disabled(),
             "Policy gate should be enabled to prevent prompt uploads"
         );
     }
