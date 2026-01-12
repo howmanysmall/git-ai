@@ -19,7 +19,7 @@
 - ❌ No CAS (Content-Addressable Storage) prompt uploads
 - ✅ All tracking remains local only
 
-The policy is enforced by the `outbound_network_reporting_disabled()` function in `src/policy.rs`, which returns `true` by default in this fork. All telemetry and upload code paths check this gate and exit early.
+The policy is enforced by the `outbound_network_reporting_disabled()` function in `src/policy.rs`, which returns `true` by default in this fork. All telemetry and upload code paths check this gate and exit early without making any network requests.
 
 To verify: Run `cargo test policy` or check that `flush-logs` exits immediately with a policy message.
 
