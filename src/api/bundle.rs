@@ -21,6 +21,15 @@ impl ApiClient {
         &self,
         request: CreateBundleRequest,
     ) -> Result<CreateBundleResponse, GitAiError> {
+        // FORK POLICY: All outbound prompt uploads are disabled in this fork.
+        // This prevents bundle creation (prompt sharing) to the server.
+        // See src/config.rs::outbound_network_reporting_disabled() for the policy gate.
+        if crate::config::outbound_network_reporting_disabled() {
+            return Err(GitAiError::Generic(
+                "Bundle creation disabled by fork policy (no outbound network reporting)".to_string(),
+            ));
+        }
+
         let response = self.context().post_json("/api/bundles", &request)?;
         let status_code = response.status_code;
 
