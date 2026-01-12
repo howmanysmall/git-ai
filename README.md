@@ -10,6 +10,14 @@
 
 <video src="https://github.com/user-attachments/assets/68304ca6-b262-4638-9fb6-0a26f55c7986" muted loop controls autoplay></video>
 
+## Fork Policy: No Telemetry or Uploads
+
+This fork of `git-ai` has been modified to permanently disable all outbound network reporting.
+- **Telemetry Disabled:** Sentry and PostHog telemetry are disabled at the code level.
+- **Prompt Uploads Disabled:** Uploading prompt data to remote servers (CAS) is disabled.
+
+These changes are enforced by a central policy gate in `src/policy.rs` and cannot be overridden by configuration.
+
 ## Quick Start
 
 #### Mac, Linux, Windows (WSL)

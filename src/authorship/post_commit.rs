@@ -110,42 +110,49 @@ pub fn post_commit(
         }
         _ => {
             // "default" - attempt CAS upload, NEVER keep messages in notes
-            // Check conditions for CAS upload:
-            // - prompt_storage == "default" (implied here)
-            // - repo not in exclusion list
-            // - user is logged in OR using custom API URL
-            let context = ApiContext::new(None);
-            let client = ApiClient::new(context);
-            let using_custom_api =
-                Config::get().api_base_url() != crate::config::DEFAULT_API_BASE_URL;
-            let should_enqueue_cas =
-                !should_exclude && (client.is_logged_in() || using_custom_api);
 
-            if should_enqueue_cas {
-                // Redact secrets before uploading to CAS
-                let redaction_count =
-                    redact_secrets_from_prompts(&mut authorship_log.metadata.prompts);
-                if redaction_count > 0 {
-                    debug_log(&format!(
-                        "Redacted {} secrets from prompts before CAS upload",
-                        redaction_count
-                    ));
-                }
+            // Check global policy first
+            if crate::policy::outbound_network_reporting_disabled() {
+                // Policy prevents upload - always strip messages locally
+                strip_prompt_messages(&mut authorship_log.metadata.prompts);
+            } else {
+                // Check conditions for CAS upload:
+                // - prompt_storage == "default" (implied here)
+                // - repo not in exclusion list
+                // - user is logged in OR using custom API URL
+                let context = ApiContext::new(None);
+                let client = ApiClient::new(context);
+                let using_custom_api =
+                    Config::get().api_base_url() != crate::config::DEFAULT_API_BASE_URL;
+                let should_enqueue_cas =
+                    !should_exclude && (client.is_logged_in() || using_custom_api);
 
-                if let Err(e) =
-                    enqueue_prompt_messages_to_cas(repo, &mut authorship_log.metadata.prompts)
-                {
-                    debug_log(&format!(
-                        "[Warning] Failed to enqueue prompt messages to CAS: {}",
-                        e
-                    ));
-                    // Enqueue failed - still strip messages (never keep in notes for "default")
+                if should_enqueue_cas {
+                    // Redact secrets before uploading to CAS
+                    let redaction_count =
+                        redact_secrets_from_prompts(&mut authorship_log.metadata.prompts);
+                    if redaction_count > 0 {
+                        debug_log(&format!(
+                            "Redacted {} secrets from prompts before CAS upload",
+                            redaction_count
+                        ));
+                    }
+
+                    if let Err(e) =
+                        enqueue_prompt_messages_to_cas(repo, &mut authorship_log.metadata.prompts)
+                    {
+                        debug_log(&format!(
+                            "[Warning] Failed to enqueue prompt messages to CAS: {}",
+                            e
+                        ));
+                        // Enqueue failed - still strip messages (never keep in notes for "default")
+                        strip_prompt_messages(&mut authorship_log.metadata.prompts);
+                    }
+                    // Success: enqueue function already cleared messages
+                } else {
+                    // Not enqueueing - strip messages (never keep in notes for "default")
                     strip_prompt_messages(&mut authorship_log.metadata.prompts);
                 }
-                // Success: enqueue function already cleared messages
-            } else {
-                // Not enqueueing - strip messages (never keep in notes for "default")
-                strip_prompt_messages(&mut authorship_log.metadata.prompts);
             }
         }
     }

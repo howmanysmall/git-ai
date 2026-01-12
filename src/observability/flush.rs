@@ -11,6 +11,12 @@ use uuid::Uuid;
 
 /// Handle the flush-logs command
 pub fn handle_flush_logs(args: &[String]) {
+    // Check global policy first
+    if crate::policy::outbound_network_reporting_disabled() {
+        eprintln!("Telemetry is disabled by fork policy");
+        std::process::exit(0);
+    }
+
     let force = args.contains(&"--force".to_string());
     if cfg!(debug_assertions) && !force {
         eprintln!(
@@ -314,6 +320,10 @@ impl SentryClient {
     }
 
     fn send_event(&self, event: Value) -> Result<String, Box<dyn std::error::Error>> {
+        if crate::policy::outbound_network_reporting_disabled() {
+            return Ok("disabled".to_string());
+        }
+
         let auth_header = format!(
             "Sentry sentry_version=7, sentry_key={}, sentry_client=git-ai/{}",
             self.public_key,
@@ -353,6 +363,10 @@ impl PostHogClient {
     }
 
     fn send_event(&self, event: Value) -> Result<(), Box<dyn std::error::Error>> {
+        if crate::policy::outbound_network_reporting_disabled() {
+            return Ok(());
+        }
+
         let body = serde_json::to_string(&event)?;
 
         let response = minreq::post(&self.endpoint)
