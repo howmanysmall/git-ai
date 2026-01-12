@@ -5,6 +5,12 @@ use std::collections::HashMap;
 
 /// Spawn a background process to flush CAS objects to the server
 pub fn spawn_background_cas_flush() {
+    // Check fork policy: CAS uploads are disabled
+    if crate::policy::outbound_network_reporting_disabled() {
+        // Don't spawn background flush process
+        return;
+    }
+
     use std::process::Command;
 
     if let Ok(exe) = crate::utils::current_git_ai_exe() {
@@ -18,6 +24,13 @@ pub fn spawn_background_cas_flush() {
 
 /// Handle the flush-cas command
 pub fn handle_flush_cas(_args: &[String]) {
+    // Check fork policy: CAS uploads are disabled
+    if crate::policy::outbound_network_reporting_disabled() {
+        eprintln!("CAS uploads are disabled by fork policy.");
+        eprintln!("No prompt data will be sent to external services.");
+        return;
+    }
+
     // Create API client to check login status
     let context = ApiContext::new(None);
     let api_base_url = context.base_url.clone();

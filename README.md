@@ -10,6 +10,21 @@
 
 <video src="https://github.com/user-attachments/assets/68304ca6-b262-4638-9fb6-0a26f55c7986" muted loop controls autoplay></video>
 
+## 🔒 Fork Privacy Policy
+
+**This fork disables all outbound telemetry and prompt uploads by default.**
+
+- ❌ No Sentry telemetry
+- ❌ No PostHog analytics
+- ❌ No CAS (Content-Addressable Storage) prompt uploads
+- ✅ All tracking remains local only
+
+The policy is enforced by the `outbound_network_reporting_disabled()` function in `src/policy.rs`, which returns `true` by default in this fork. All telemetry and upload code paths check this gate and exit early without making any network requests.
+
+To verify: Run `cargo test policy` or check that `flush-logs` exits immediately with a policy message.
+
+---
+
 ## Quick Start
 
 #### Mac, Linux, Windows (WSL)

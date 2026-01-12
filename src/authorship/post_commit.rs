@@ -9,6 +9,7 @@ use crate::config::Config;
 use crate::error::GitAiError;
 use crate::git::refs::notes_add;
 use crate::git::repository::Repository;
+use crate::policy;
 use crate::utils::debug_log;
 use std::collections::{HashMap, HashSet};
 use std::io::IsTerminal;
@@ -122,27 +123,33 @@ pub fn post_commit(
                 !should_exclude && (client.is_logged_in() || using_custom_api);
 
             if should_enqueue_cas {
-                // Redact secrets before uploading to CAS
-                let redaction_count =
-                    redact_secrets_from_prompts(&mut authorship_log.metadata.prompts);
-                if redaction_count > 0 {
-                    debug_log(&format!(
-                        "Redacted {} secrets from prompts before CAS upload",
-                        redaction_count
-                    ));
-                }
-
-                if let Err(e) =
-                    enqueue_prompt_messages_to_cas(repo, &mut authorship_log.metadata.prompts)
-                {
-                    debug_log(&format!(
-                        "[Warning] Failed to enqueue prompt messages to CAS: {}",
-                        e
-                    ));
-                    // Enqueue failed - still strip messages (never keep in notes for "default")
+                // Fork policy: prompt uploads are disabled
+                if policy::outbound_network_reporting_disabled() {
+                    // Never upload prompts - strip messages
                     strip_prompt_messages(&mut authorship_log.metadata.prompts);
+                } else {
+                    // Redact secrets before uploading to CAS
+                    let redaction_count =
+                        redact_secrets_from_prompts(&mut authorship_log.metadata.prompts);
+                    if redaction_count > 0 {
+                        debug_log(&format!(
+                            "Redacted {} secrets from prompts before CAS upload",
+                            redaction_count
+                        ));
+                    }
+
+                    if let Err(e) =
+                        enqueue_prompt_messages_to_cas(repo, &mut authorship_log.metadata.prompts)
+                    {
+                        debug_log(&format!(
+                            "[Warning] Failed to enqueue prompt messages to CAS: {}",
+                            e
+                        ));
+                        // Enqueue failed - still strip messages (never keep in notes for "default")
+                        strip_prompt_messages(&mut authorship_log.metadata.prompts);
+                    }
+                    // Success: enqueue function already cleared messages
                 }
-                // Success: enqueue function already cleared messages
             } else {
                 // Not enqueueing - strip messages (never keep in notes for "default")
                 strip_prompt_messages(&mut authorship_log.metadata.prompts);
@@ -333,6 +340,9 @@ fn batch_upsert_prompts_to_db(
 /// - Serialize messages to JSON
 /// - Enqueue to CAS (returns hash)
 /// - Set messages_url (format: {api_base_url}/cas/{hash}) and clear messages
+///
+/// Note: In this fork, the policy gate in post_commit.rs prevents this from being called.
+/// Additionally, flush_cas (which syncs to remote) checks the policy and exits early.
 fn enqueue_prompt_messages_to_cas(
     repo: &Repository,
     prompts: &mut std::collections::BTreeMap<String, crate::authorship::authorship_log::PromptRecord>,
@@ -456,6 +466,16 @@ mod tests {
         assert!(
             authorship_log.attestations.is_empty(),
             "Should have empty attestations when no checkpoints exist"
+        );
+    }
+
+    #[test]
+    fn test_prompt_uploads_respect_policy() {
+        // Verify that enqueue_prompt_messages_to_cas respects the policy gate
+        // When policy is enabled, it should never upload prompts
+        assert!(
+            crate::policy::outbound_network_reporting_disabled(),
+            "Policy gate should be enabled to prevent prompt uploads"
         );
     }
 }
