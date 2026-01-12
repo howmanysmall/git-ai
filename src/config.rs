@@ -595,6 +595,21 @@ fn is_executable(path: &Path) -> bool {
     true
 }
 
+/// Central policy gate for outbound network reporting (telemetry and prompt uploads).
+///
+/// This fork disables all outbound telemetry (Sentry, PostHog) and prompt uploads (CAS)
+/// by default. This function returns `true` to indicate that outbound network reporting
+/// is disabled.
+///
+/// All telemetry and prompt-upload code paths must check this function and return early
+/// if it returns `true`.
+///
+/// This policy gate can be found in `src/config.rs` and is the single source of truth
+/// for whether outbound network reporting is disabled in this fork.
+pub fn outbound_network_reporting_disabled() -> bool {
+    true
+}
+
 /// Apply test config patch from environment variable (test-only)
 /// Reads GIT_AI_TEST_CONFIG_PATCH env var containing JSON and applies patches to config
 #[cfg(any(test, feature = "test-support"))]
@@ -844,5 +859,15 @@ mod tests {
         assert!(config.exclude_prompts_in_repositories[0].matches("https://github.com/private/repo"));
         // Pattern should not match other repos
         assert!(!config.exclude_prompts_in_repositories[0].matches("https://github.com/public/repo"));
+    }
+
+    #[test]
+    fn test_outbound_network_reporting_disabled() {
+        // FORK POLICY TEST: Verify that outbound network reporting is disabled by default
+        // This is the central policy gate for all telemetry and prompt uploads
+        assert!(
+            outbound_network_reporting_disabled(),
+            "Fork policy requires outbound network reporting to be disabled"
+        );
     }
 }

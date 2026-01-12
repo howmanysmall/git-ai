@@ -337,6 +337,13 @@ fn enqueue_prompt_messages_to_cas(
     repo: &Repository,
     prompts: &mut std::collections::BTreeMap<String, crate::authorship::authorship_log::PromptRecord>,
 ) -> Result<(), GitAiError> {
+    // FORK POLICY: All outbound prompt uploads are disabled in this fork.
+    // This prevents any prompt data from being uploaded to CAS or any remote API.
+    // See src/config.rs::outbound_network_reporting_disabled() for the policy gate.
+    if crate::config::outbound_network_reporting_disabled() {
+        return Ok(());
+    }
+
     use crate::authorship::internal_db::InternalDatabase;
 
     let db = InternalDatabase::global()?;

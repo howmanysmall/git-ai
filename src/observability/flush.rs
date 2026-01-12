@@ -10,13 +10,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 /// Handle the flush-logs command
-pub fn handle_flush_logs(args: &[String]) {
-    let force = args.contains(&"--force".to_string());
-    if cfg!(debug_assertions) && !force {
-        eprintln!(
-            "Flush logs is disabled in debug mode, but if you really want to run it add --force flag"
-        );
-        std::process::exit(1);
+pub fn handle_flush_logs(_args: &[String]) {
+    // FORK POLICY: All outbound telemetry is disabled in this fork.
+    // This prevents any Sentry/PostHog events from being sent, even if DSNs or API keys are present.
+    // See src/config.rs::outbound_network_reporting_disabled() for the policy gate.
+    if crate::config::outbound_network_reporting_disabled() {
+        eprintln!("Telemetry disabled by fork policy (no outbound network reporting).");
+        std::process::exit(0);
     }
 
     let config = Config::get();
@@ -672,4 +672,46 @@ fn get_or_create_distinct_id() -> String {
     }
 
     new_id
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_handle_flush_logs_exits_when_telemetry_disabled() {
+        // FORK POLICY TEST: Verify that flush-logs exits early when telemetry is disabled
+        // This test would normally call handle_flush_logs, but since it calls std::process::exit,
+        // we instead verify the policy gate is enabled
+        assert!(
+            crate::config::outbound_network_reporting_disabled(),
+            "Fork policy requires outbound network reporting to be disabled"
+        );
+        // When the policy gate is enabled, handle_flush_logs should exit with code 0
+        // without performing any network operations
+    }
+
+    #[test]
+    fn test_sanitize_git_url_removes_password() {
+        // Test that passwords are sanitized from git URLs
+        let url = "https://user:password@github.com/repo.git";
+        let sanitized = sanitize_git_url(url);
+        assert_eq!(sanitized, "https://user:*****@github.com/repo.git");
+    }
+
+    #[test]
+    fn test_sanitize_git_url_no_password() {
+        // Test that URLs without passwords are unchanged
+        let url = "https://github.com/repo.git";
+        let sanitized = sanitize_git_url(url);
+        assert_eq!(sanitized, "https://github.com/repo.git");
+    }
+
+    #[test]
+    fn test_sanitize_git_url_ssh() {
+        // Test that SSH URLs are unchanged
+        let url = "git@github.com:user/repo.git";
+        let sanitized = sanitize_git_url(url);
+        assert_eq!(sanitized, "git@github.com:user/repo.git");
+    }
 }

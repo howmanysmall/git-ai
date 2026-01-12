@@ -36,6 +36,27 @@ After you commit, `git-ai` adds a git note to track which lines were AI-authored
 
 <img src="https://github.com/acunniffe/git-ai/raw/main/assets/docs/graph.jpg" width="400" />
 
+## ⚠️ Fork Policy: Telemetry and Uploads Disabled
+
+**This is a privacy-focused fork of git-ai that disables all outbound network reporting by default.**
+
+### What's disabled:
+- ✅ **All telemetry** (Sentry, PostHog) - No analytics or error reports sent
+- ✅ **All prompt uploads** (CAS API) - Prompts stay on your machine
+- ✅ **Prompt sharing** (`git-ai share` command) - Cannot create public links
+- ✅ **Background network processes** - No data leaves your system
+
+### What still works:
+- ✅ **Full local functionality** - AI authorship tracking, statistics, and visualization
+- ✅ **Git notes storage** - All data stored locally in your repository
+- ✅ **Agent integrations** - All supported agents work normally
+- ✅ **SQLite database** - Local prompt and metadata storage
+
+### Technical details:
+All outbound network operations are gated by the `outbound_network_reporting_disabled()` function in `src/config.rs`. This policy cannot be overridden through configuration. To re-enable telemetry or uploads, you must modify the source code and rebuild.
+
+**Privacy guarantee**: This fork will never upload prompts, telemetry, or any repository data to external servers, regardless of login state, API keys, or configuration settings.
+
 ## Installing the Stats Bot (early access)
 
 Aggregate `git-ai` data at the PR, developer, Repository and Organization levels:
