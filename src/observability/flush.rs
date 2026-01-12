@@ -1,5 +1,6 @@
 use crate::config::{Config, id_file_path};
 use crate::git::find_repository_in_path;
+use crate::policy;
 use futures::stream::{self, StreamExt};
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -11,6 +12,12 @@ use uuid::Uuid;
 
 /// Handle the flush-logs command
 pub fn handle_flush_logs(args: &[String]) {
+    // Check fork policy: telemetry is disabled
+    if policy::outbound_network_reporting_disabled() {
+        eprintln!("Telemetry and log uploads are disabled by fork policy.");
+        eprintln!("No data will be sent to external services (Sentry/PostHog).");
+        std::process::exit(0);
+    }
     let force = args.contains(&"--force".to_string());
     if cfg!(debug_assertions) && !force {
         eprintln!(
@@ -314,6 +321,11 @@ impl SentryClient {
     }
 
     fn send_event(&self, event: Value) -> Result<String, Box<dyn std::error::Error>> {
+        // Check fork policy: telemetry is disabled
+        if crate::policy::outbound_network_reporting_disabled() {
+            return Err("Telemetry disabled by fork policy".into());
+        }
+
         let auth_header = format!(
             "Sentry sentry_version=7, sentry_key={}, sentry_client=git-ai/{}",
             self.public_key,
@@ -353,6 +365,11 @@ impl PostHogClient {
     }
 
     fn send_event(&self, event: Value) -> Result<(), Box<dyn std::error::Error>> {
+        // Check fork policy: telemetry is disabled
+        if crate::policy::outbound_network_reporting_disabled() {
+            return Err("Telemetry disabled by fork policy".into());
+        }
+
         let body = serde_json::to_string(&event)?;
 
         let response = minreq::post(&self.endpoint)
@@ -672,4 +689,70 @@ fn get_or_create_distinct_id() -> String {
     }
 
     new_id
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_flush_logs_respects_policy_gate() {
+        // This test verifies that when the policy gate is enabled,
+        // handle_flush_logs exits early without attempting any network operations.
+        // 
+        // Since handle_flush_logs calls std::process::exit(), we can't directly
+        // test it in a unit test. Instead, we verify the policy gate itself works.
+        assert!(
+            crate::policy::outbound_network_reporting_disabled(),
+            "Policy gate should be enabled to prevent telemetry"
+        );
+    }
+
+    #[test]
+    fn test_sentry_client_respects_policy() {
+        // Verify SentryClient::send_event respects the policy gate
+        let client = SentryClient {
+            endpoint: "https://example.com/api/test/store/".to_string(),
+            public_key: "test_key".to_string(),
+        };
+
+        let event = serde_json::json!({
+            "message": "test",
+            "level": "info"
+        });
+
+        let result = client.send_event(event);
+        assert!(
+            result.is_err(),
+            "send_event should fail when policy gate is enabled"
+        );
+        assert!(
+            result.unwrap_err().to_string().contains("fork policy"),
+            "Error should mention fork policy"
+        );
+    }
+
+    #[test]
+    fn test_posthog_client_respects_policy() {
+        // Verify PostHogClient::send_event respects the policy gate
+        let client = PostHogClient {
+            api_key: "test_key".to_string(),
+            endpoint: "https://example.com/capture/".to_string(),
+        };
+
+        let event = serde_json::json!({
+            "event": "test",
+            "properties": {}
+        });
+
+        let result = client.send_event(event);
+        assert!(
+            result.is_err(),
+            "send_event should fail when policy gate is enabled"
+        );
+        assert!(
+            result.unwrap_err().to_string().contains("fork policy"),
+            "Error should mention fork policy"
+        );
+    }
 }
