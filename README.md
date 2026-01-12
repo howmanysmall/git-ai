@@ -16,7 +16,7 @@ This fork of `git-ai` has been modified to permanently disable all outbound netw
 - **Telemetry Disabled:** Sentry and PostHog telemetry are disabled at the code level.
 - **Prompt Uploads Disabled:** Uploading prompt data to remote servers (CAS) is disabled.
 
-These changes are enforced by a central policy gate in `src/policy.rs`.
+These changes are enforced by a central policy gate in `src/policy.rs` and cannot be overridden by configuration.
 
 ## Quick Start
 
