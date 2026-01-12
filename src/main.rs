@@ -7,6 +7,7 @@ mod error;
 mod feature_flags;
 mod git;
 mod observability;
+mod policy;
 mod utils;
 
 use clap::Parser;

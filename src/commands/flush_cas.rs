@@ -18,6 +18,12 @@ pub fn spawn_background_cas_flush() {
 
 /// Handle the flush-cas command
 pub fn handle_flush_cas(_args: &[String]) {
+    // Check global policy first
+    if crate::policy::outbound_network_reporting_disabled() {
+        eprintln!("CAS upload is disabled by fork policy");
+        std::process::exit(0);
+    }
+
     // Create API client to check login status
     let context = ApiContext::new(None);
     let api_base_url = context.base_url.clone();
