@@ -17,6 +17,11 @@ This PR implements a privacy-focused fork policy that **disables all outbound te
 - Background CAS flush processes never spawned
 - API upload calls return early with error
 
+✅ **Prompt sharing (`git-ai share` command)**
+- Bundle creation API returns error
+- Cannot create public shareable links
+- Prevents accidental prompt leakage through sharing feature
+
 ## What Still Works
 
 ✅ **Full local functionality**
@@ -77,7 +82,8 @@ Updated `README.md` with prominent **Fork Policy** section explaining:
 | `src/observability/mod.rs` | Gated spawn function | Prevent background telemetry |
 | `src/authorship/post_commit.rs` | Gated enqueue function | Prevent CAS queuing |
 | `src/commands/flush_cas.rs` | Gated handlers + spawn | Disable CAS flush |
-| `src/api/cas.rs` | Gated upload function | Block API calls |
+| `src/api/cas.rs` | Gated upload function | Block CAS API calls |
+| `src/api/bundle.rs` | Gated create_bundle function | Disable share command |
 
 ## Verification
 

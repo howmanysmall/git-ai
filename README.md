@@ -43,6 +43,7 @@ After you commit, `git-ai` adds a git note to track which lines were AI-authored
 ### What's disabled:
 - ✅ **All telemetry** (Sentry, PostHog) - No analytics or error reports sent
 - ✅ **All prompt uploads** (CAS API) - Prompts stay on your machine
+- ✅ **Prompt sharing** (`git-ai share` command) - Cannot create public links
 - ✅ **Background network processes** - No data leaves your system
 
 ### What still works:
