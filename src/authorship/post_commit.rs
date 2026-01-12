@@ -474,7 +474,7 @@ mod tests {
         // Verify that enqueue_prompt_messages_to_cas respects the policy gate
         // When policy is enabled, it should never upload prompts
         assert!(
-            policy::outbound_network_reporting_disabled(),
+            crate::policy::outbound_network_reporting_disabled(),
             "Policy gate should be enabled to prevent prompt uploads"
         );
     }
